@@ -6,18 +6,19 @@ import mediapipe as mp
 import math
 from basic import frame
 from tkinter import *
-from tkinter import messagebox
 
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 from tensorflow.keras.preprocessing.image import img_to_array
 from tensorflow.keras.models import load_model
 import os
 
-def detect_and_predict_mask(frame, faceNet, maskNet):
-    # grab the dimensions of the frame and then construct a blob
+mask_detection = False
+
+def detect_and_predict_mask(r_img, faceNet, maskNet):
+    # grab the dimensions of the r_img and then construct a blob
     # from it
-    (h, w) = frame.shape[:2]
-    blob = cv2.dnn.blobFromImage(frame, 1.0, (224, 224),
+    (h, w) = r_img.shape[:2]
+    blob = cv2.dnn.blobFromImage(r_img, 1.0, (224, 224),
                                  (104.0, 177.0, 123.0))
 
     # pass the blob through the network and obtain the face detections
@@ -46,13 +47,13 @@ def detect_and_predict_mask(frame, faceNet, maskNet):
             (startX, startY, endX, endY) = box.astype("int")
 
             # ensure the bounding boxes fall within the dimensions of
-            # the frame
+            # the r_img
             (startX, startY) = (max(0, startX), max(0, startY))
             (endX, endY) = (min(w - 1, endX), min(h - 1, endY))
 
             # extract the face ROI, convert it from BGR to RGB channel
             # ordering, resize it to 224x224, and preprocess it
-            face = frame[startY:endY, startX:endX]
+            face = r_img[startY:endY, startX:endX]
             face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
             face = cv2.resize(face, (224, 224))
             face = img_to_array(face)
@@ -73,9 +74,27 @@ def detect_and_predict_mask(frame, faceNet, maskNet):
 
     # return a 2-tuple of the face locations and their corresponding
     # locations
-    return (locs, preds)
+    
+    ## loop over the detected face locations and their corresponding
+        # locations to get largest face
+    min_area=0
+    box=()
+    pred=()
+    for (b, p) in zip(locs, preds):            
+        (startX, startY, endX, endY) = b
+        x = endX-startX
+        y = endY-startY
+        if(x*y > min_area):
+            min_area = x*y
+            box=b
+            pred=list(p)
 
+    return pred
+       
 def camera1():
+    print("Session Details")
+
+    
     ##VIRTUAL MOUSE
     ####################################################
     wScr, hScr = autopy.screen.size()
@@ -89,20 +108,27 @@ def camera1():
     smoothening = 7
     plocX,plocY = 0,0
     clocX,clocY = 0,0
-    ###################################################
     mpHands = mp.solutions.hands
     hands = mpHands.Hands()
     tipIds = [4, 8, 12, 16, 20]
+    ###################################################
 
     ##MASK DETECTION
-    # prototxtPath = r"Mask_detection\face_detector\deploy.prototxt"
-    # weightsPath = r"Mask_detection\face_detector\res10_300x300_ssd_iter_140000.caffemodel"
-    prototxtPath = r"C:\Users\91638\OneDrive\Documents\3rd sem\3rd Sem Assignments\SE lab\final\Mask_detection\face_detector\deploy.prototxt"
-    weightsPath = r"C:\Users\91638\OneDrive\Documents\3rd sem\3rd Sem Assignments\SE lab\final\Mask_detection\face_detector\res10_300x300_ssd_iter_140000.caffemodel"
+    ###################################################
+
+    label= Label(text= "WEAR YOUR MASK \nTO CONTINUE TRANSACTION", font= ('Helvetica bold', 70))
+    prototxtPath = r"Mask_detection\face_detector\deploy.prototxt"
+    weightsPath = r"Mask_detection\face_detector\res10_300x300_ssd_iter_140000.caffemodel"
     faceNet = cv2.dnn.readNet(prototxtPath, weightsPath)
 
     # # load the face mask detector model from disk
-    maskNet = load_model(r"C:\Users\91638\OneDrive\Documents\3rd sem\3rd Sem Assignments\SE lab\final\Mask_detection\mask_detector.model")
+    maskNet = load_model(r"Mask_detection\mask_detector.model")
+
+    i=0
+    no = 0
+    flag = 0 ##mask
+    info=""
+    color=(0, 0, 255)
 
     while True:
         wait=1
@@ -125,9 +151,9 @@ def camera1():
             Label(bg="yellow").place(relx=0.95,rely=0.03,relheight=0.03,relwidth=0.03)
             #########################  Finding largest hands  #####################
             best = [0, 0]
-            for i in range(len(results.multi_hand_landmarks)):
+            for j in range(len(results.multi_hand_landmarks)):
                 tx, ty, bx, by = 0, 0, 0, 0
-                for Id, lm in enumerate(results.multi_hand_landmarks[i].landmark):
+                for Id, lm in enumerate(results.multi_hand_landmarks[j].landmark):
                     if (Id == 12):
                         tx, ty = lm.x, lm.y
                     if (Id == 0):
@@ -135,7 +161,7 @@ def camera1():
 
                 temp = math.hypot(tx - bx, ty - by)
                 if temp > best[1]:
-                    best[0] = i
+                    best[0] = j
                     best[1] = temp
 
             myHand = results.multi_hand_landmarks[best[0]]
@@ -184,9 +210,9 @@ def camera1():
 
             cv2.rectangle(img, (frameR, 10), (int(wScr*scale)-frameR, int(hScr/2.20)), (255, 0, 255), 2)
 
-    ################################################################################
+            ############################################################################
             # 4. Only Index Finger : Moving Mode
-            if fingers[1] == 1 and fingers[2] == 0:
+            if (fingers[1] == 1 and fingers[2] == 0) or (fingers[1] == 1 and fingers[2] == 0):
                 Label(bg="green").place(relx=0.95,rely=0.03,relheight=0.03,relwidth=0.03)
                 # 5. Convert Coordinates
                 if (x1 <= frameR):
@@ -211,7 +237,7 @@ def camera1():
                 cv2.circle(img, (x1, y1), 15, (255, 0, 255), cv2.FILLED)
                 plocX, plocY = clocX, clocY
 
-    ################################################################################
+            ################################################################################
             # 8. Both Index and middle fingers are up : Clicking Mode
             if fingers[1] == 1 and fingers[2] == 1:
 
@@ -238,43 +264,53 @@ def camera1():
                     
 
         ###############################################################################
+
+
+
         ###MASK DETECTION
-        r_img = cv2.resize(img,(400,400))
+        if mask_detection : 
+            if(i%5==0):
+                r_img = cv2.resize(img,(400,400))
+                pred = detect_and_predict_mask(r_img, faceNet, maskNet)
+                if pred:
+                    ans = 0 if pred[0]>pred[1] else 1            ##  0->mask  and  1->no mask
+                    no+=ans
 
-        # detect faces in the frame and determine if they are wearing a
-        # face mask or not
-        (locs, preds) = detect_and_predict_mask(r_img, faceNet, maskNet)
+                    (mask, withoutMask) = pred
+                    # determine the class label and color we'll use to draw
+                    # the bounding box and text
+                    info = "Mask" if mask > withoutMask else "No Mask"
+                    color = (0, 255, 0) if info == "Mask" else (0, 0, 255)
 
-        # loop over the detected face locations and their corresponding
-        # locations
-        for (box, pred) in zip(locs, preds):
-            # unpack the bounding box and predictions
-            (startX, startY, endX, endY) = box
-            (mask, withoutMask) = pred
+                    # include the probability in the label
+                    info = "{}: {:.2f}%".format(info, max(mask, withoutMask) * 100)
+                else:
+                    i-=1
+            elif(i==31 and no>=4 and flag==0):
+                ##block
+                print("User didn't wore mask - BLOCK")
+                label.place(relheight=0.9,relwidth=0.9,relx=0.05,rely=0.05)
+                flag=1  ##nomask
+                i= -1
+                no=0
+            elif(i==31 and no<=3 and flag==1):
+                ##unblock
+                print("User wore mask - UNBLOCK")
+                label.place_forget()
+                flag=0  ##mask
+                i=-1
+                no=0
+            elif(i==31):
+                i=-1
+                no=0
+            else:
+                pass
+        # display the label 
 
-            # determine the class label and color we'll use to draw
-            # the bounding box and text
-            label = "Mask" if mask > withoutMask else "No Mask"
-            color = (0, 255, 0) if label == "Mask" else (0, 0, 255)
-
-            if label=="No Mask":
-                print("NO MASK")    
-                # messagebox.showwarning("showwarning", "Warning")    
-                
-
-            # include the probability in the label
-            label = "{}: {:.2f}%".format(label, max(mask, withoutMask) * 100)
-
-            # display the label and bounding box rectangle on the output
-            # frame
-            cv2.putText(img, label, (startX, startY - 10),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 2)
-            ##cv2.rectangle(img, (startX, startY), (endX, endY), color, 2)
-
-
+        cv2.putText(img, info, (100, 100),cv2.FONT_HERSHEY_SIMPLEX, 1, color, 4)
+        i+=1
+            
         ##################################################################################
-
-
         # 11. Frame Rate
         cTime = time.time()
         fps = 1 / (cTime - pTime)

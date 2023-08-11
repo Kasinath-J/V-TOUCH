@@ -17,7 +17,7 @@ def detect_and_predict_mask(frame, faceNet, maskNet):
 	# pass the blob through the network and obtain the face detections
 	faceNet.setInput(blob)
 	detections = faceNet.forward()
-	print(detections.shape)
+	# print(detections.shape)
 
 	# initialize our list of faces, their corresponding locations,
 	# and the list of predictions from our face mask network
@@ -70,16 +70,16 @@ def detect_and_predict_mask(frame, faceNet, maskNet):
 	return (locs, preds)
 
 # load our serialized face detector model from disk
-prototxtPath = r"C:\Users\91638\OneDrive\Documents\3rd sem\3rd Sem Assignments\SE lab\final\Mask_detection\face_detector\deploy.prototxt"
-weightsPath = r"C:\Users\91638\OneDrive\Documents\3rd sem\3rd Sem Assignments\SE lab\final\Mask_detection\face_detector\res10_300x300_ssd_iter_140000.caffemodel"
+prototxtPath = r"Mask_detection\face_detector\deploy.prototxt"   
+weightsPath = r"Mask_detection\face_detector\res10_300x300_ssd_iter_140000.caffemodel"
 # prototxtPath = os.path.join(os.getcwd(), 'face_detector', 'deploy.prototxt')
 # weightsPath = os.path.join(os.getcwd(), 'face_detector', 'res10_300x300_ssd_iter_140000.caffemodel')
 faceNet = cv2.dnn.readNet(prototxtPath, weightsPath)
 
 # load the face mask detector model from disk
-maskNet = load_model(r"C:\Users\91638\OneDrive\Documents\3rd sem\3rd Sem Assignments\SE lab\final\Mask_detection\mask_detector.model")
+maskNet = load_model(r"Mask_detection\mask_detector.model")
 # initialize the video stream
-print("[INFO] starting video stream...")
+# print("[INFO] starting video stream...")
 cap = cv2.VideoCapture(0)
 
 # loop over the frames from the video stream
