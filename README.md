@@ -112,7 +112,15 @@ Clone the project and install necessary packages with the below code (Windows)
   pip install -r requirements.txt
 ```
   
- And then run index.py file.
+ And then run _index.py_ file.
+ ```bash
+   python index.py
+```
+
+To enable mask detection, update the 15th line in _camera1.py_
+> mask_detection = True
+
+  
   
 Note : Two cameras are needed to run this program.(You could use your phone as second camera through other apps such as droidcam)
 
